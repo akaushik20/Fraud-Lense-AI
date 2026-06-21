@@ -1,0 +1,12 @@
+pandas
+numpy
+scikit-learn
+xgboost
+shap
+matplotlib
+seaborn
+sweetviz==2.1.4
+openai
+gradio
+joblib
+pip-tools
