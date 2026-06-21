@@ -161,10 +161,11 @@ def cd_feature_distributions(df):
         upper = df[col].quantile(0.99)
         ax.boxplot(
             [legit_vals.clip(upper=upper), fraud_vals.clip(upper=upper)],
-            labels=['Legit', 'Fraud'],
             patch_artist=True,
             boxprops=dict(facecolor='steelblue', alpha=0.6),
         )
+        ax.set_xticks([1, 2])
+        ax.set_xticklabels(['Legit', 'Fraud'])
         ax.set_title(col)
         ax.set_ylabel('Value (clipped at 99th pct)')
 

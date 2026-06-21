@@ -1,0 +1,13 @@
+=== Dataset Overview ===
+Rows:          590,540
+Columns:       434
+Memory usage:  1603.3 MB
+Fraud rate:    3.50%  (20,663 fraudulent)
+Dtype counts:  {dtype('float32'): np.int64(399), <StringDtype(storage='python', na_value=nan)>: np.int64(31), dtype('int32'): np.int64(2), dtype('int8'): np.int64(1), dtype('int16'): np.int64(1)}
+
+=== TransactionAmt by Class ===
+Legitimate — mean: $134.51  median: $68.50
+Fraud      — mean: $149.24  median: $75.00
+
+=== Time Patterns ===
+Fraud rate over time saved — use TimeSeriesSplit to prevent future leakage in CV.
