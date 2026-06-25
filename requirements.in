@@ -9,3 +9,5 @@ openai
 gradio
 joblib
 pip-tools
+setuptools<70
+ydata-profiling
