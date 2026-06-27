@@ -1,0 +1,15 @@
+# Features removed: >90% missing values
+# Total: 12 features
+
+D7
+dist2
+id_07
+id_08
+id_18
+id_21
+id_22
+id_23
+id_24
+id_25
+id_26
+id_27

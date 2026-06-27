@@ -1,0 +1,71 @@
+================================================================================
+FEATURE SELECTION REPORT
+================================================================================
+
+Original dataset shape: (590540, 434)
+Total features: 434
+Target variable: isFraud
+
+--------------------------------------------------------------------------------
+CONSTANT FEATURES (removed)
+--------------------------------------------------------------------------------
+Count: 0
+
+
+--------------------------------------------------------------------------------
+HIGH MISSING VALUE FEATURES (>90% missing, removed)
+--------------------------------------------------------------------------------
+Count: 12
+
+  D7: 93.41% missing
+  dist2: 93.63% missing
+  id_07: 99.13% missing
+  id_08: 99.13% missing
+  id_18: 92.36% missing
+  id_21: 99.13% missing
+  id_22: 99.12% missing
+  id_23: 99.12% missing
+  id_24: 99.20% missing
+  id_25: 99.13% missing
+  id_26: 99.13% missing
+  id_27: 99.12% missing
+
+--------------------------------------------------------------------------------
+HIGHLY CORRELATED FEATURES (>0.95 correlation, removed)
+--------------------------------------------------------------------------------
+Count: 124
+Total correlated pairs found: 573
+
+Sample correlated pairs (showing up to 20):
+  D12 <-> D4: 1.000 -> Dropped: D12, Kept: D4
+  V322 <-> V95: 1.000 -> Dropped: V322, Kept: V95
+  V323 <-> V96: 1.000 -> Dropped: V323, Kept: V96
+  V324 <-> V97: 1.000 -> Dropped: V324, Kept: V97
+  V322 <-> V101: 1.000 -> Dropped: V322, Kept: V101
+  V322 <-> V279: 1.000 -> Dropped: V322, Kept: V279
+  V101 <-> V95: 1.000 -> Dropped: V101, Kept: V95
+  V293 <-> V279: 1.000 -> Dropped: V293, Kept: V279
+  C12 <-> C7: 0.999 -> Dropped: C7, Kept: C12
+  V324 <-> V280: 0.999 -> Dropped: V324, Kept: V280
+  V322 <-> V293: 0.999 -> Dropped: V322, Kept: V293
+  V177 <-> V167: 0.999 -> Dropped: V177, Kept: V167
+  V324 <-> V103: 0.999 -> Dropped: V324, Kept: V103
+  V329 <-> V105: 0.999 -> Dropped: V329, Kept: V105
+  V293 <-> V101: 0.999 -> Dropped: V293, Kept: V101
+  V323 <-> V102: 0.999 -> Dropped: V323, Kept: V102
+  V324 <-> V295: 0.999 -> Dropped: V324, Kept: V295
+  V103 <-> V97: 0.999 -> Dropped: V103, Kept: V97
+  V279 <-> V95: 0.999 -> Dropped: V279, Kept: V95
+  V295 <-> V280: 0.999 -> Dropped: V295, Kept: V280
+  ... and 553 more pairs
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+Features removed (constant): 0
+Features removed (>90% missing): 12
+Features removed (high correlation): 124
+Total features removed: 136
+Features remaining: 297
+
+Remaining features saved to: selected_features.txt
