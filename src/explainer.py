@@ -41,7 +41,8 @@ def create_shap_explainer(model, X_background):
     Returns:
         explainer: SHAP TreeExplainer object
     """
-    explainer = shap.TreeExplainer(model, X_background)
+    # Use tree_path_dependent for XGBoost compatibility (handles categorical splits)
+    explainer = shap.TreeExplainer(model, X_background, feature_perturbation='tree_path_dependent')
     return explainer
 
 

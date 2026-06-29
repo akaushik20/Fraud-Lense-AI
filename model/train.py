@@ -64,7 +64,8 @@ def train_xgboost(X_train, y_train, X_test, y_test):
         scale_pos_weight=scale_weight,
         random_state=42,
         n_jobs=-1,
-        eval_metric='auc'
+        eval_metric='auc',
+        enable_categorical=False  # Disable categorical splits for SHAP compatibility
     )
     
     # Train with early stopping
