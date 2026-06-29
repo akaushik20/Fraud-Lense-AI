@@ -58,9 +58,10 @@ def remove_correlated_features(df, target='isFraud', threshold=0.95):
     corr_matrix = df[numeric_cols].corr().abs()
     
     # Get upper triangle of correlation matrix (avoid duplicates)
-    upper_tri = corr_matrix.where(
-        np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
-    )
+    # Create boolean mask: True for upper triangle, False elsewhere (k=1 excludes diagonal)
+    mask = np.triu(np.ones(corr_matrix.shape, dtype=bool), k=1)
+    # Apply mask to keep only upper triangle values, rest become NaN
+    upper_tri = corr_matrix.where(mask)
     
     # Find pairs with correlation > threshold
     corr_pairs = []

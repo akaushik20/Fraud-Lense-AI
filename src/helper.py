@@ -14,7 +14,9 @@ INTERPRETABLE_FEATURES = [
 
 def load_ieee_cis(data_dir='data'):
     txn = pd.read_csv(f'{data_dir}/train_transaction.csv')
+    txn = reduce_mem_usage(txn)
     idn = pd.read_csv(f'{data_dir}/train_identity.csv')
+    idn = reduce_mem_usage(idn)
     df = txn.merge(idn, on='TransactionID', how='left')
     print(f'Loaded {len(df):,} transactions | Fraud rate: {df.isFraud.mean():.1%}')
     return df
