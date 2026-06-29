@@ -77,8 +77,8 @@ def train_xgboost(X_train, y_train, X_test, y_test):
     return model
 
 
-def save_artifacts(model, encoders, features):
-    """Save model, encoders, and feature list"""
+def save_artifacts(model, encoders, features, X_train_sample=None):
+    """Save model, encoders, feature list, and SHAP background data"""
     # Save model
     model_path = os.path.join(OUTPUT_DIR, 'xgboost_model.pkl')
     with open(model_path, 'wb') as f:
@@ -97,6 +97,13 @@ def save_artifacts(model, encoders, features):
         for feat in features:
             f.write(f"{feat}\n")
     print(f"✓ Features saved: {feature_path}")
+    
+    # Save SHAP background data (for explanations)
+    if X_train_sample is not None:
+        background_path = os.path.join(OUTPUT_DIR, 'shap_background.pkl')
+        with open(background_path, 'wb') as f:
+            pickle.dump(X_train_sample, f)
+        print(f"✓ SHAP background saved: {background_path}")
 
 
 if __name__ == "__main__":
@@ -123,7 +130,9 @@ if __name__ == "__main__":
     
     # Save artifacts
     print("\n5. Saving model artifacts...")
-    save_artifacts(model, encoders, features)
+    # Sample 100 rows from training set for SHAP background
+    X_train_sample = X_train.sample(n=min(100, len(X_train)), random_state=42)
+    save_artifacts(model, encoders, features, X_train_sample)
     
     print("\n" + "=" * 80)
     print("TRAINING COMPLETE")
