@@ -28,16 +28,32 @@ Fraud detection system using IEEE-CIS dataset with multi-stage feature selection
 - ydata-profiling reports (minimal mode for speed)
 - Sample size: 50k rows, ~6 min runtime
 
+### ✅ Model Training ([model/train.py](model/train.py))
+- **Algorithm**: XGBoost Classifier
+- **AUC Score**: 0.9011
+- **Features**: 150 selected features
+- **Split**: Time-based (80/20)
+- **Artifacts**: Model, encoders, features saved to `outputs/models/`
+
+### ✅ Gradio App ([app.py](app.py))
+- Interactive web interface with Blocks layout
+- Landing page with 4 metric cards (AUC, fraud rate, dataset size, features)
+- Metrics loaded from JSON (`outputs/models/metrics.json`)
+- Run with: `python app.py`
+
 ### 📊 Outputs
-- `outputs/feature_selection/selected_features.txt` - Final feature list
+- `outputs/models/xgboost_model.pkl` - Trained model
+- `outputs/models/metrics.json` - Model performance metrics
+- `outputs/models/features.txt` - Feature list used in final model
+- `outputs/feature_selection/selected_features.txt` - Feature selection results
 - `outputs/feature_selection/feature_importance_scores.csv` - XGBoost rankings
 - `outputs/feature_selection/feature_selection_report.txt` - Detailed analysis
 
 ## Next Steps
-- [ ] Implement training pipeline ([model/train.py](model/train.py))
-- [ ] Time-based train/validation split
-- [ ] Model evaluation and tuning
-- [ ] Deployment artifacts
+- [ ] Add fraud prediction functionality to Gradio app
+- [ ] Implement SHAP explanations for predictions
+- [ ] Add transaction input form
+- [ ] Deploy to Hugging Face Spaces
 
 ## Environment
 - Python 3.13.4

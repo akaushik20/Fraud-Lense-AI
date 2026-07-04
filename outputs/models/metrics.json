@@ -1,0 +1,7 @@
+{
+  "auc_score": 0.9011,
+  "fraud_rate_percent": 3.5,
+  "total_transactions": 590540,
+  "original_features": 434,
+  "selected_features": 150
+}
