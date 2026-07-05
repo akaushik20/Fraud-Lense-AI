@@ -1,5 +1,6 @@
 import os
 import pickle
+import yaml
 import pandas as pd
 import numpy as np
 import shap
@@ -18,16 +19,14 @@ def load_model_artifacts(model_dir='outputs/models'):
     with open(encoder_path, 'rb') as f:
         encoders = pickle.load(f)
     
-    # Load feature list
-    feature_path = os.path.join(model_dir, 'features.txt')
-    features = []
-    with open(feature_path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                features.append(line)
+    # Load features from YAML
+    features_yaml_path = os.path.join(model_dir, 'features.yaml')
+    with open(features_yaml_path, 'r') as f:
+        feature_config = yaml.safe_load(f)
+        all_features = feature_config['numeric'] + feature_config['categorical']
+        categorical_features = feature_config['categorical']
     
-    return model, encoders, features
+    return model, encoders, all_features, categorical_features
 
 
 def create_shap_explainer(model, X_background):
@@ -46,7 +45,7 @@ def create_shap_explainer(model, X_background):
     return explainer
 
 
-def get_prediction_explanation(model, explainer, encoders, transaction_df, features):
+def get_prediction_explanation(model, explainer, encoders, transaction_df, features, categorical_features=None):
     """
     Get top 5 interpretable feature drivers for a single prediction
     
@@ -56,6 +55,7 @@ def get_prediction_explanation(model, explainer, encoders, transaction_df, featu
         encoders: Dictionary of LabelEncoders
         transaction_df: DataFrame with single transaction (raw features)
         features: List of feature names used in training
+        categorical_features: List of categorical feature names (optional)
     
     Returns:
         dict with prediction, is_fraud flag, and top 5 drivers
@@ -64,14 +64,17 @@ def get_prediction_explanation(model, explainer, encoders, transaction_df, featu
     X = transaction_df[features].copy()
     
     # Encode categoricals using trained encoders
-    X_encoded, _ = encode_categoricals(X, encoders)
+    if categorical_features:
+        X, _ = encode_categoricals(X, encoders=encoders, columns=categorical_features)
+    else:
+        X, _ = encode_categoricals(X, encoders=encoders)
     
     # Get prediction probability
-    pred_proba = model.predict_proba(X_encoded)[0, 1]  # Probability of fraud (class 1)
+    pred_proba = model.predict_proba(X)[0, 1]  # Probability of fraud (class 1)
     is_fraud = pred_proba >= 0.5
     
     # Compute SHAP values
-    shap_values = explainer.shap_values(X_encoded)
+    shap_values = explainer.shap_values(X)
     
     # Handle SHAP output format (might be array or list of arrays)
     if isinstance(shap_values, list):
@@ -148,7 +151,7 @@ class FraudExplainer:
         print("Loading fraud detection model...")
         
         # Load model, encoders, features
-        self.model, self.encoders, self.features = load_model_artifacts(model_dir)
+        self.model, self.encoders, self.features, self.categorical_features = load_model_artifacts(model_dir)
         print(f"✓ Model loaded with {len(self.features)} features")
         
         # Load SHAP background data
@@ -181,7 +184,8 @@ class FraudExplainer:
             self.explainer, 
             self.encoders, 
             transaction_df, 
-            self.features
+            self.features,
+            self.categorical_features
         )
         
         return explanation

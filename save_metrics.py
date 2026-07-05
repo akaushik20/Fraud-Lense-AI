@@ -3,6 +3,7 @@ Extract and save model metrics to JSON for Gradio app
 """
 import json
 import pickle
+import yaml
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 from src.helper import load_ieee_cis, encode_categoricals
@@ -15,9 +16,11 @@ with open('outputs/models/xgboost_model.pkl', 'rb') as f:
 with open('outputs/models/encoders.pkl', 'rb') as f:
     encoders = pickle.load(f)
 
-# Load features
-with open('outputs/models/features.txt', 'r') as f:
-    features = [line.strip() for line in f if line.strip()]
+# Load features from YAML
+with open('outputs/models/features.yaml', 'r') as f:
+    feature_config = yaml.safe_load(f)
+    all_features = feature_config['numeric'] + feature_config['categorical']
+    categorical_features = feature_config['categorical']
 
 # Load data
 df = load_ieee_cis()
@@ -27,14 +30,15 @@ df = df.sort_values('TransactionDT').reset_index(drop=True)
 split_idx = int(len(df) * 0.8)
 test_df = df.iloc[split_idx:]
 
-X_test = test_df[features].copy()
+X_test = test_df[all_features].copy()
 y_test = test_df['isFraud']
 
-# Encode categoricals
-X_test_encoded, _ = encode_categoricals(X_test, encoders)
+# Encode only categorical features (explicitly pass column list)
+if categorical_features:
+    X_test, _ = encode_categoricals(X_test, encoders=encoders, columns=categorical_features)
 
 # Get predictions
-y_pred_proba = model.predict_proba(X_test_encoded)[:, 1]
+y_pred_proba = model.predict_proba(X_test)[:, 1]
 
 # Calculate AUC
 auc_score = roc_auc_score(y_test, y_pred_proba)
@@ -48,7 +52,7 @@ metrics = {
     "fraud_rate_percent": round(fraud_rate, 2),
     "total_transactions": len(df),
     "original_features": 434,
-    "selected_features": len(features)
+    "selected_features": len(all_features)
 }
 
 # Save to JSON

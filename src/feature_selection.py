@@ -2,6 +2,7 @@ import os
 import sys
 import pandas as pd
 import numpy as np
+import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.helper import load_ieee_cis
@@ -195,6 +196,26 @@ def save_feature_list(features, filepath, header=""):
             f.write(f"{feat}\n")
 
 
+def save_features_yaml(df, features, filepath):
+    """Save features in YAML format with numeric/categorical split"""
+    # Separate numeric and categorical features
+    numeric_features = [f for f in features if df[f].dtype != 'object']
+    categorical_features = [f for f in features if df[f].dtype == 'object']
+    
+    # Create configuration dictionary
+    config = {
+        'total_features': len(features),
+        'numeric_count': len(numeric_features),
+        'categorical_count': len(categorical_features),
+        'numeric': sorted(numeric_features),
+        'categorical': sorted(categorical_features)
+    }
+    
+    # Save as YAML
+    with open(filepath, 'w') as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+
 def save_feature_report(df, constant_feats, high_missing_feats, missing_pct, 
                        corr_removed_feats=None, corr_pairs=None):
     """Generate detailed report of feature selection"""
@@ -258,7 +279,7 @@ def save_feature_report(df, constant_feats, high_missing_feats, missing_pct,
             f.write(f"Features removed (high correlation): {len(corr_removed_feats)}\n")
         f.write(f"Total features removed: {len(removed_features)}\n")
         f.write(f"Features remaining: {len(df.columns) - len(removed_features) - 1}\n")  # -1 for target
-        f.write(f"\nRemaining features saved to: selected_features.txt\n")
+        f.write(f"\nRemaining features saved to: selected_features.yaml\n")
     
     print(f"\nDetailed report saved to: {report_path}")
 
@@ -369,12 +390,13 @@ if __name__ == '__main__':
     )
     print(f"✓ All removed features saved to: all_removed_features.txt")
     
-    save_feature_list(
+    # Save features in YAML format with numeric/categorical split
+    save_features_yaml(
+        df,
         selected_features,
-        os.path.join(OUTPUT_DIR, 'selected_features.txt'),
-        "Selected features for training (after removing constant, high-missing, and correlated features)"
+        os.path.join(OUTPUT_DIR, 'selected_features.yaml')
     )
-    print(f"✓ Selected features saved to: selected_features.txt")
+    print(f"✓ Features YAML saved to: selected_features.yaml")
     
     # Generate detailed report
     save_feature_report(df, constant_features, high_missing_features, missing_pct,
@@ -385,5 +407,5 @@ if __name__ == '__main__':
     print("=" * 80)
     print(f"\nNext steps:")
     print(f"  1. Review the report: outputs/feature_selection/feature_selection_report.txt")
-    print(f"  2. Use selected features: outputs/feature_selection/selected_features.txt")
-    print(f"  3. Update train.py to load selected features")
+    print(f"  2. Use selected features: outputs/feature_selection/selected_features.yaml")
+    print(f"  3. Run model training: python model/train.py")

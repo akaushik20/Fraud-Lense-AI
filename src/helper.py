@@ -3,12 +3,8 @@ from sklearn.preprocessing import LabelEncoder
 
 INTERPRETABLE_FEATURES = [
     'TransactionAmt', 'ProductCD',
-    'card1', 'card2', 'card3', 'card4', 'card5', 'card6',
-    'addr1', 'addr2', 'P_emaildomain', 'R_emaildomain',
+    'P_emaildomain', 'R_emaildomain',
     'DeviceType', 'DeviceInfo',
-    'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10', 'C11', 'C12', 'C13', 'C14',
-    'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D15',
-    'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9',
 ]
 
 
@@ -30,19 +26,39 @@ def reduce_mem_usage(df):
     return df
 
 
-def encode_categoricals(df, encoders=None):
+def encode_categoricals(df, encoders=None, columns=None):
+    """
+    Encode categorical features using LabelEncoder.
+    
+    Args:
+        df: DataFrame to encode
+        encoders: Pre-fitted encoders dict (for inference/test sets)
+        columns: Explicit list of columns to encode. If None, auto-detects object dtype columns.
+    
+    Returns:
+        df: Encoded DataFrame
+        encoders: Dict of fitted LabelEncoders
+    """
     df = df.copy()
-    obj_cols = df.select_dtypes('object').columns.tolist()
+    
+    # Use explicit list or auto-detect
+    if columns is not None:
+        cols_to_encode = [c for c in columns if c in df.columns]
+    else:
+        cols_to_encode = df.select_dtypes('object').columns.tolist()
+    
     fitted = {}
 
     if encoders is None:
-        for col in obj_cols:
+        # Fit mode: create new encoders
+        for col in cols_to_encode:
             le = LabelEncoder()
             df[col] = le.fit_transform(df[col].astype(str))
             fitted[col] = le
         return df, fitted
     else:
-        for col in obj_cols:
+        # Transform mode: use existing encoders
+        for col in cols_to_encode:
             if col in encoders:
                 le = encoders[col]
                 # unseen labels at inference time get -1

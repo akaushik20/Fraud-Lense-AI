@@ -1,6 +1,7 @@
 import gradio as gr
 import json
 from pathlib import Path
+import pandas as pd
 
 # Load metrics from JSON file
 def load_metrics():
@@ -24,14 +25,34 @@ def load_metrics():
         print("Run 'python save_metrics.py' to generate actual metrics.")
         return default_metrics
 
+def load_shap_data():
+    """Load pre-computed SHAP feature importance from JSON"""
+    shap_path = Path("outputs/models/shap_feature_importance.json")
+    
+    if shap_path.exists():
+        with open(shap_path, 'r') as f:
+            data = json.load(f)
+            # Convert to DataFrame for plotting
+            df = pd.DataFrame(data['features'])
+            # Only show interpretable features on the chart
+            df = df[df['is_interpretable'] == True]
+            # Sort by mean_abs_shap descending (already sorted, but explicit)
+            df = df.sort_values('mean_abs_shap', ascending=False)
+            return df
+    else:
+        print(f"Warning: {shap_path} not found.")
+        print("Run 'python compute_shap_importance.py' to generate SHAP data.")
+        return pd.DataFrame()  # Empty DataFrame
+
 # Simple function that will be called when user interacts with the app
 def predict_fraud():
     """Placeholder function for fraud prediction"""
     return "Fraud detection system ready!"
 
 if __name__ == "__main__":
-    # Load metrics at startup
+    # Load metrics and SHAP data at startup
     metrics = load_metrics()
+    shap_df = load_shap_data()
     
     # Create a Blocks interface - this gives us full control over layout
     with gr.Blocks() as demo:
@@ -66,6 +87,26 @@ if __name__ == "__main__":
                 gr.Markdown("### Features used")
                 gr.Markdown(f"# {metrics['original_features']} → {metrics['selected_features']}")
                 gr.Markdown("*Full model power, explainable subset*")
+        
+        # ROW 3: SHAP Feature Importance Chart
+        if not shap_df.empty:
+            gr.Markdown("### Top Features Driving Fraud Predictions")
+            gr.Markdown("*Based on mean absolute SHAP values · Red = increases fraud risk · Green = decreases risk*")
+            
+            gr.BarPlot(
+                value=shap_df,
+                x="mean_abs_shap",
+                y="feature",
+                color="direction",
+                color_map={
+                    "increases_risk": "#ef4444",  # red
+                    "decreases_risk": "#22c55e"   # green
+                },
+                show_label=False,
+                height=500,
+                x_title="Mean Absolute SHAP Value",
+                y_title="Feature"
+            )
         
     
     # Launch the web interface

@@ -44,8 +44,8 @@ Fraud detection system using IEEE-CIS dataset with multi-stage feature selection
 ### 📊 Outputs
 - `outputs/models/xgboost_model.pkl` - Trained model
 - `outputs/models/metrics.json` - Model performance metrics
-- `outputs/models/features.txt` - Feature list used in final model
-- `outputs/feature_selection/selected_features.txt` - Feature selection results
+- `outputs/models/features.yaml` - Feature configuration (numeric/categorical split)
+- `outputs/feature_selection/selected_features.yaml` - Feature selection results with type info
 - `outputs/feature_selection/feature_importance_scores.csv` - XGBoost rankings
 - `outputs/feature_selection/feature_selection_report.txt` - Detailed analysis
 
