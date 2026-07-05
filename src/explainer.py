@@ -62,13 +62,19 @@ def get_prediction_explanation(model, explainer, encoders, transaction_df, featu
     """
     # Select only features used in training
     X = transaction_df[features].copy()
-    
+
     # Encode categoricals using trained encoders
     if categorical_features:
         X, _ = encode_categoricals(X, encoders=encoders, columns=categorical_features)
     else:
         X, _ = encode_categoricals(X, encoders=encoders)
-    
+
+    # XGBoost validates column order against training time; reorder to match
+    # the booster's expected order rather than trusting the caller's list
+    booster_feature_names = model.get_booster().feature_names
+    if booster_feature_names:
+        X = X[booster_feature_names]
+
     # Get prediction probability
     pred_proba = model.predict_proba(X)[0, 1]  # Probability of fraud (class 1)
     is_fraud = pred_proba >= 0.5
@@ -81,8 +87,10 @@ def get_prediction_explanation(model, explainer, encoders, transaction_df, featu
         shap_values = shap_values[1]  # For binary classification, index 1 is positive class
     
     # Create DataFrame with feature names and SHAP values
+    # (use X.columns, not the caller's `features` list, since X was reordered
+    # to match the booster's expected column order above)
     shap_df = pd.DataFrame({
-        'feature': features,
+        'feature': X.columns,
         'shap_value': shap_values[0]  # First (and only) row
     })
     
@@ -152,17 +160,17 @@ class FraudExplainer:
         
         # Load model, encoders, features
         self.model, self.encoders, self.features, self.categorical_features = load_model_artifacts(model_dir)
-        print(f"✓ Model loaded with {len(self.features)} features")
+        print(f"Model loaded with {len(self.features)} features")
         
         # Load SHAP background data
         background_path = os.path.join(model_dir, 'shap_background.pkl')
         with open(background_path, 'rb') as f:
             self.background_data = pickle.load(f)
-        print(f"✓ SHAP background loaded ({len(self.background_data)} samples)")
+        print(f"SHAP background loaded ({len(self.background_data)} samples)")
         
         # Create SHAP explainer
         self.explainer = create_shap_explainer(self.model, self.background_data)
-        print("✓ SHAP explainer ready\n")
+        print("SHAP explainer ready\n")
     
     def explain(self, transaction_dict):
         """
