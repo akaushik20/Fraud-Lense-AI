@@ -151,20 +151,15 @@ if __name__ == "__main__":
                 # ROW 3: SHAP Feature Importance Chart
                 if not shap_df.empty:
                     gr.Markdown("### Top Features Driving Fraud Predictions")
-                    gr.Markdown("*Based on mean absolute SHAP values · Red = increases fraud risk · Green = decreases risk*")
+                    gr.Markdown("*How much does each feature matter in determining if a transaction is fraudulent*")
 
                     gr.BarPlot(
                         value=shap_df,
                         x="mean_abs_shap",
                         y="feature",
-                        color="direction",
-                        color_map={
-                            "increases_risk": "#ef4444",  # red
-                            "decreases_risk": "#22c55e"   # green
-                        },
                         show_label=False,
                         height=500,
-                        x_title="Mean Absolute SHAP Value",
+                        x_title="Feature Importance (Mean Absolute SHAP)",
                         y_title="Feature"
                     )
 
@@ -202,7 +197,7 @@ if __name__ == "__main__":
                 with gr.Row():
                     risk_output = gr.Label(label="Fraud Risk")
                     drivers_output = gr.BarPlot(
-                        x="impact",
+                        x="shap_value",
                         y="feature",
                         color="direction",
                         color_map={
@@ -211,7 +206,7 @@ if __name__ == "__main__":
                         },
                         show_label=False,
                         height=350,
-                        x_title="SHAP Impact",
+                        x_title="SHAP Value (← decreases risk | increases risk →)",
                         y_title="Feature",
                         label="Top Drivers for This Transaction",
                     )
