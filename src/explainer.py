@@ -97,10 +97,10 @@ def get_prediction_explanation(model, explainer, encoders, transaction_df, featu
     # Filter to interpretable features only
     interpretable_shap = shap_df[shap_df['feature'].isin(INTERPRETABLE_FEATURES)]
     
-    # Sort by absolute SHAP value (impact magnitude) and take top 5
+    # Sort by absolute SHAP value (impact magnitude)
     top_drivers = interpretable_shap.reindex(
         interpretable_shap['shap_value'].abs().sort_values(ascending=False).index
-    ).head(5)
+    )
     
     # Format drivers with direction and magnitude
     drivers = []

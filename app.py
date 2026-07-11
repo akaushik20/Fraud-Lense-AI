@@ -92,7 +92,18 @@ def explain_transaction(amt, product_cd, p_emaildomain, r_emaildomain, device_ty
 
     drivers_df = pd.DataFrame(result['drivers'])
 
-    return risk_label, drivers_df
+    # TEMP DEBUG: verify chart data matches what's printed here (delete later)
+    print("\n--- Drivers DataFrame (chart data) ---")
+    print(drivers_df)
+    print("---------------------------------------\n")
+
+    # Force a symmetric x-axis around zero so both increases_risk (+) and
+    # decreases_risk (-) bars render proportionally, regardless of which
+    # side has the larger magnitude
+    limit = drivers_df['shap_value'].abs().max() * 1.15
+    x_lim = [-limit, limit]
+
+    return risk_label, gr.BarPlot(value=drivers_df, x_lim=x_lim)
 
 
 if __name__ == "__main__":
