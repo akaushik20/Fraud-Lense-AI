@@ -186,14 +186,21 @@ def select_by_xgboost_importance(df, features, target='isFraud', top_n=150, samp
     return selected_features, importance_df
 
 
-def save_feature_list(features, filepath, header=""):
-    """Save list of features to text file"""
-    with open(filepath, 'w') as f:
-        if header:
-            f.write(f"# {header}\n")
-            f.write(f"# Total: {len(features)} features\n\n")
-        for feat in sorted(features):
-            f.write(f"{feat}\n")
+def save_feature_importance_csv(feature_records, filepath):
+    """Save a complete feature report as a single CSV file."""
+    rows = []
+    for feature, info in feature_records.items():
+        rows.append({
+            'feature': feature,
+            'status': info.get('status', 'selected'),
+            'removal_reason': info.get('removal_reason', ''),
+            'missing_pct': round(info.get('missing_pct', 0.0) * 100, 2),
+            'importance_score': info.get('importance_score', ''),
+        })
+    df_out = pd.DataFrame(rows).sort_values(
+        ['status', 'importance_score'], ascending=[True, False]
+    )
+    df_out.to_csv(filepath, index=False)
 
 
 def save_features_yaml(df, features, filepath):
@@ -216,81 +223,17 @@ def save_features_yaml(df, features, filepath):
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
 
-def save_feature_report(df, constant_feats, high_missing_feats, missing_pct, 
-                       corr_removed_feats=None, corr_pairs=None):
-    """Generate detailed report of feature selection"""
-    report_path = os.path.join(OUTPUT_DIR, 'feature_selection_report.txt')
-    
-    with open(report_path, 'w', encoding='utf-8') as f:
-        f.write("=" * 80 + "\n")
-        f.write("FEATURE SELECTION REPORT\n")
-        f.write("=" * 80 + "\n\n")
-        
-        f.write(f"Original dataset shape: {df.shape}\n")
-        f.write(f"Total features: {len(df.columns)}\n")
-        f.write(f"Target variable: isFraud\n\n")
-        
-        f.write("-" * 80 + "\n")
-        f.write("CONSTANT FEATURES (removed)\n")
-        f.write("-" * 80 + "\n")
-        f.write(f"Count: {len(constant_feats)}\n\n")
-        for feat in sorted(constant_feats):
-            unique_val = df[feat].dropna().unique()
-            val_str = str(unique_val[0]) if len(unique_val) > 0 else "All NaN"
-            f.write(f"  {feat}: {val_str}\n")
-        
-        f.write("\n" + "-" * 80 + "\n")
-        f.write(f"HIGH MISSING VALUE FEATURES (>90% missing, removed)\n")
-        f.write("-" * 80 + "\n")
-        f.write(f"Count: {len(high_missing_feats)}\n\n")
-        for feat in sorted(high_missing_feats):
-            pct = missing_pct[feat] * 100
-            f.write(f"  {feat}: {pct:.2f}% missing\n")
-        
-        # Add correlation analysis section if provided
-        if corr_removed_feats is not None and corr_pairs is not None:
-            f.write("\n" + "-" * 80 + "\n")
-            f.write(f"HIGHLY CORRELATED FEATURES (>0.95 correlation, removed)\n")
-            f.write("-" * 80 + "\n")
-            f.write(f"Count: {len(corr_removed_feats)}\n")
-            f.write(f"Total correlated pairs found: {len(corr_pairs)}\n\n")
-            
-            if len(corr_pairs) > 0:
-                f.write("Sample correlated pairs (showing up to 20):\n")
-                for feat1, feat2, corr_val in sorted(corr_pairs, key=lambda x: x[2], reverse=True)[:20]:
-                    dropped = feat1 if feat1 in corr_removed_feats else feat2
-                    kept = feat2 if feat1 in corr_removed_feats else feat1
-                    f.write(f"  {feat1} <-> {feat2}: {corr_val:.3f} -> Dropped: {dropped}, Kept: {kept}\n")
-                
-                if len(corr_pairs) > 20:
-                    f.write(f"  ... and {len(corr_pairs) - 20} more pairs\n")
-        
-        # Features removed (union of all)
-        removed_features = set(constant_feats) | set(high_missing_feats)
-        if corr_removed_feats:
-            removed_features |= set(corr_removed_feats)
-        
-        f.write("\n" + "-" * 80 + "\n")
-        f.write("SUMMARY\n")
-        f.write("-" * 80 + "\n")
-        f.write(f"Features removed (constant): {len(constant_feats)}\n")
-        f.write(f"Features removed (>90% missing): {len(high_missing_feats)}\n")
-        if corr_removed_feats is not None:
-            f.write(f"Features removed (high correlation): {len(corr_removed_feats)}\n")
-        f.write(f"Total features removed: {len(removed_features)}\n")
-        f.write(f"Features remaining: {len(df.columns) - len(removed_features) - 1}\n")  # -1 for target
-        f.write(f"\nRemaining features saved to: selected_features.yaml\n")
-    
-    print(f"\nDetailed report saved to: {report_path}")
-
-
 if __name__ == '__main__':
     print("Loading IEEE-CIS fraud detection dataset...")
     df = load_ieee_cis()
     
     print(f"\nOriginal dataset: {df.shape}")
     print(f"Total features: {len(df.columns) - 1} (excluding target)")
-    
+
+    # Initialize feature records: one entry per non-target feature
+    all_features = [col for col in df.columns if col != 'isFraud']
+    feature_records = {f: {'status': 'selected', 'removal_reason': '', 'missing_pct': 0.0, 'importance_score': ''} for f in all_features}
+
     # Step 1: Identify constant features
     print("\n" + "=" * 80)
     print("STEP 1: Identifying constant features...")
@@ -299,7 +242,10 @@ if __name__ == '__main__':
     print(f"Found {len(constant_features)} constant features")
     if constant_features:
         print("Examples:", constant_features[:5])
-    
+    for f in constant_features:
+        feature_records[f]['status'] = 'removed'
+        feature_records[f]['removal_reason'] = 'constant'
+
     # Step 2: Identify high missing value features
     print("\n" + "=" * 80)
     print("STEP 2: Identifying features with >90% missing values...")
@@ -308,7 +254,12 @@ if __name__ == '__main__':
     print(f"Found {len(high_missing_features)} features with >90% missing values")
     if high_missing_features:
         print("Examples:", high_missing_features[:5])
-    
+    for f in all_features:
+        feature_records[f]['missing_pct'] = missing_pct.get(f, 0.0)
+    for f in high_missing_features:
+        feature_records[f]['status'] = 'removed'
+        feature_records[f]['removal_reason'] = 'high_missing'
+
     # Step 3: Remove highly correlated features
     print("\n" + "=" * 80)
     print("STEP 3: Removing highly correlated features (>0.95)...")
@@ -322,7 +273,10 @@ if __name__ == '__main__':
     print(f"Found {len(corr_removed_features)} features to remove due to high correlation")
     if corr_removed_features:
         print("Examples:", corr_removed_features[:5])
-    
+    for f in corr_removed_features:
+        feature_records[f]['status'] = 'removed'
+        feature_records[f]['removal_reason'] = 'high_correlation'
+
     # Combine all removed features
     removed_features = initial_removed | set(corr_removed_features)
     print(f"\n{'=' * 80}")
@@ -330,7 +284,6 @@ if __name__ == '__main__':
     print(f"{'=' * 80}")
     
     # Get remaining features (excluding target)
-    all_features = [col for col in df.columns if col != 'isFraud']
     selected_features = [feat for feat in all_features if feat not in removed_features]
     
     print(f"Features remaining: {len(selected_features)}")
@@ -343,8 +296,11 @@ if __name__ == '__main__':
     df_remaining = df[selected_features + ['isFraud']]
     low_var_features = remove_low_variance_features(df_remaining, threshold=0.01)
     print(f"Found {len(low_var_features)} low-variance features")
+    for f in low_var_features:
+        feature_records[f]['status'] = 'removed'
+        feature_records[f]['removal_reason'] = 'low_variance'
     selected_features = [f for f in selected_features if f not in low_var_features]
-    
+
     # Step 5: XGBoost feature importance (optional - uncomment to enable)
     print("\n" + "=" * 80)
     print("STEP 5: Selecting top features by XGBoost importance...")
@@ -353,59 +309,38 @@ if __name__ == '__main__':
         df, selected_features, target='isFraud', top_n=150, sample_size=100000
     )
     print(f"Selected top {len(top_features)} features by importance")
-    importance_df.to_csv(os.path.join(OUTPUT_DIR, 'feature_importance_scores.csv'), index=False)
-    print(f"✓ Importance scores saved")
+    # Merge importance scores into records; features not in top_n are low_importance
+    importance_map = dict(zip(importance_df['feature'], importance_df['importance']))
+    for f in selected_features:
+        score = importance_map.get(f, 0.0)
+        feature_records[f]['importance_score'] = score
+        if f not in top_features:
+            feature_records[f]['status'] = 'removed'
+            feature_records[f]['removal_reason'] = 'low_importance'
     selected_features = top_features
-    
+
     # Save results
     print("\n" + "=" * 80)
     print("SAVING RESULTS...")
     print("=" * 80)
-    
-    save_feature_list(
-        constant_features,
-        os.path.join(OUTPUT_DIR, 'removed_constant_features.txt'),
-        "Features removed: Constant values"
+
+    save_feature_importance_csv(
+        feature_records,
+        os.path.join(OUTPUT_DIR, 'feature_importance_scores.csv')
     )
-    print(f"✓ Constant features saved to: removed_constant_features.txt")
-    
-    save_feature_list(
-        high_missing_features,
-        os.path.join(OUTPUT_DIR, 'removed_high_missing_features.txt'),
-        "Features removed: >90% missing values"
-    )
-    print(f"✓ High missing features saved to: removed_high_missing_features.txt")
-    
-    save_feature_list(
-        corr_removed_features,
-        os.path.join(OUTPUT_DIR, 'removed_correlated_features.txt'),
-        "Features removed: High correlation (>0.95)"
-    )
-    print(f"✓ Correlated features saved to: removed_correlated_features.txt")
-    
-    save_feature_list(
-        sorted(removed_features),
-        os.path.join(OUTPUT_DIR, 'all_removed_features.txt'),
-        "All features removed (constant OR >90% missing OR highly correlated)"
-    )
-    print(f"✓ All removed features saved to: all_removed_features.txt")
-    
-    # Save features in YAML format with numeric/categorical split
+    print(f"✓ Feature report saved to: feature_importance_scores.csv")
+
     save_features_yaml(
         df,
         selected_features,
         os.path.join(OUTPUT_DIR, 'selected_features.yaml')
     )
-    print(f"✓ Features YAML saved to: selected_features.yaml")
-    
-    # Generate detailed report
-    save_feature_report(df, constant_features, high_missing_features, missing_pct,
-                       corr_removed_features, corr_pairs)
-    
+    print(f"✓ Selected features saved to: selected_features.yaml")
+
     print("\n" + "=" * 80)
     print("FEATURE SELECTION COMPLETE")
     print("=" * 80)
     print(f"\nNext steps:")
-    print(f"  1. Review the report: outputs/feature_selection/feature_selection_report.txt")
+    print(f"  1. Review: outputs/feature_selection/feature_importance_scores.csv")
     print(f"  2. Use selected features: outputs/feature_selection/selected_features.yaml")
     print(f"  3. Run model training: python model/train.py")
