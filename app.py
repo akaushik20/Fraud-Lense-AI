@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.explainer import FraudExplainer
-from src.helper import INTERPRETABLE_FEATURES
+from src.helper import INTERPRETABLE_FEATURES, FEATURE_DISPLAY_NAMES
 
 CATEGORICAL_INTERPRETABLE_FEATURES = [
     f for f in INTERPRETABLE_FEATURES if f != 'TransactionAmt'
@@ -45,6 +45,7 @@ def load_shap_data():
             df = df[df['is_interpretable'] == True]
             # Sort by mean_abs_shap descending (already sorted, but explicit)
             df = df.sort_values('mean_abs_shap', ascending=False)
+            df['feature'] = df['feature'].map(lambda f: FEATURE_DISPLAY_NAMES.get(f, f))
             return df
     else:
         print(f"Warning: {shap_path} not found.")
@@ -64,8 +65,8 @@ def load_feature_defaults():
         return {}
 
 
-def build_transaction(amt, product_cd, p_emaildomain, r_emaildomain, device_type, device_info):
-    """Overlay the 6 user-facing form inputs on top of the pre-computed defaults"""
+def build_transaction(amt, product_cd, p_emaildomain, r_emaildomain, device_type, device_info, card4, card6):
+    """Overlay the user-facing form inputs on top of the pre-computed defaults"""
     transaction = feature_defaults.copy()
     transaction.update({
         'TransactionAmt': amt,
@@ -74,14 +75,16 @@ def build_transaction(amt, product_cd, p_emaildomain, r_emaildomain, device_type
         'R_emaildomain': r_emaildomain,
         'DeviceType': device_type,
         'DeviceInfo': device_info,
+        'card4': card4,
+        'card6': card6,
     })
     return transaction
 
 
-def explain_transaction(amt, product_cd, p_emaildomain, r_emaildomain, device_type, device_info):
+def explain_transaction(amt, product_cd, p_emaildomain, r_emaildomain, device_type, device_info, card4, card6):
     """Score one transaction and return a risk label + SHAP driver chart"""
     transaction = build_transaction(
-        amt, product_cd, p_emaildomain, r_emaildomain, device_type, device_info
+        amt, product_cd, p_emaildomain, r_emaildomain, device_type, device_info, card4, card6
     )
     result = fraud_explainer.explain(transaction)
 
@@ -91,6 +94,7 @@ def explain_transaction(amt, product_cd, p_emaildomain, r_emaildomain, device_ty
     }
 
     drivers_df = pd.DataFrame(result['drivers'])
+    drivers_df['feature'] = drivers_df['feature'].map(lambda f: FEATURE_DISPLAY_NAMES.get(f, f))
 
     # TEMP DEBUG: verify chart data matches what's printed here (delete later)
     print("\n--- Drivers DataFrame (chart data) ---")
@@ -203,6 +207,16 @@ if __name__ == "__main__":
                         choices=categorical_choices.get('DeviceInfo', []),
                     )
 
+                with gr.Row():
+                    card4_input = gr.Dropdown(
+                        label="Card Brand",
+                        choices=categorical_choices.get('card4', []),
+                    )
+                    card6_input = gr.Dropdown(
+                        label="Card Type",
+                        choices=categorical_choices.get('card6', []),
+                    )
+
                 explain_button = gr.Button("Check Transaction", variant="primary")
 
                 with gr.Row():
@@ -227,6 +241,7 @@ if __name__ == "__main__":
                     inputs=[
                         amt_input, product_input, p_email_input,
                         r_email_input, device_type_input, device_info_input,
+                        card4_input, card6_input,
                     ],
                     outputs=[risk_output, drivers_output],
                 )

@@ -5,7 +5,19 @@ INTERPRETABLE_FEATURES = [
     'TransactionAmt', 'ProductCD',
     'P_emaildomain', 'R_emaildomain',
     'DeviceType', 'DeviceInfo',
+    'card4', 'card6',
 ]
+
+FEATURE_DISPLAY_NAMES = {
+    'TransactionAmt':  'Transaction Amount',
+    'ProductCD':       'Product Code',
+    'P_emaildomain':   'Purchaser Email Domain',
+    'R_emaildomain':   'Recipient Email Domain',
+    'DeviceType':      'Device Type',
+    'DeviceInfo':      'Device Info',
+    'card4':           'Card Brand',
+    'card6':           'Card Type',
+}
 
 
 def load_ieee_cis(data_dir='data'):
