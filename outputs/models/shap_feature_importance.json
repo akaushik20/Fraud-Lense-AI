@@ -1,7 +1,7 @@
 {
   "sample_size": 200,
   "total_features": 150,
-  "interpretable_features": 6,
+  "interpretable_features": 8,
   "top_features_count": 6,
   "features": [
     {
@@ -41,6 +41,20 @@
     },
     {
       "feature": "ProductCD",
+      "mean_abs_shap": 0.0,
+      "mean_shap": 0.0,
+      "direction": "decreases_risk",
+      "is_interpretable": true
+    },
+    {
+      "feature": "card4",
+      "mean_abs_shap": 0.0,
+      "mean_shap": 0.0,
+      "direction": "decreases_risk",
+      "is_interpretable": true
+    },
+    {
+      "feature": "card6",
       "mean_abs_shap": 0.0,
       "mean_shap": 0.0,
       "direction": "decreases_risk",
@@ -1075,7 +1089,7 @@
       "mean_abs_shap": 0.0,
       "mean_shap": 0.0,
       "direction": "decreases_risk",
-      "is_interpretable": false
+      "is_interpretable": true
     },
     {
       "feature": "R_emaildomain",
@@ -1096,7 +1110,7 @@
       "mean_abs_shap": 0.0,
       "mean_shap": 0.0,
       "direction": "decreases_risk",
-      "is_interpretable": false
+      "is_interpretable": true
     }
   ]
 }
