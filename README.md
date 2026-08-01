@@ -2,6 +2,32 @@
 
 Fraud detection system using IEEE-CIS dataset with multi-stage feature selection and XGBoost modeling.
 
+## Quick Start (End-to-End)
+
+```bash
+# 1. Feature selection (433 → 150 features)
+python src/feature_selection.py
+
+# 2. Train model
+python model/train.py
+
+# 3. Pre-compute supporting artifacts
+python compute_feature_defaults.py
+python compute_shap_importance.py
+python save_metrics.py
+
+# 4. Launch app
+python app.py
+```
+
+> Requires IEEE-CIS CSVs in `data/`. Download from [Kaggle](https://www.kaggle.com/c/ieee-fraud-detection/data).
+
+**Optional EDA** (not required to run the app):
+```bash
+python src/eda.py          # summary stats, correlations, missing values
+python src/eda_ydata.py    # full ydata-profiling HTML report (~6 min)
+```
+
 ## Dataset
 - **Source**: IEEE-CIS Fraud Detection (Kaggle)
 - **Size**: 590,540 transactions, 434 features
