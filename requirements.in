@@ -6,6 +6,7 @@ shap
 matplotlib
 seaborn
 openai
+huggingface_hub
 gradio
 joblib
 pip-tools
