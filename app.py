@@ -5,6 +5,7 @@ import pandas as pd
 
 from src.explainer import FraudExplainer
 from src.helper import INTERPRETABLE_FEATURES, FEATURE_DISPLAY_NAMES
+from src.llm_explainer import generate_explanation
 
 CATEGORICAL_INTERPRETABLE_FEATURES = [
     f for f in INTERPRETABLE_FEATURES if f != 'TransactionAmt'
@@ -93,6 +94,8 @@ def explain_transaction(amt, product_cd, p_emaildomain, r_emaildomain, device_ty
         "Likely Legitimate": float(1 - result['prediction']),
     }
 
+    narrative = generate_explanation(result['drivers'], result['prediction'], transaction)
+
     drivers_df = pd.DataFrame(result['drivers'])
     drivers_df['feature'] = drivers_df['feature'].map(lambda f: FEATURE_DISPLAY_NAMES.get(f, f))
 
@@ -107,7 +110,7 @@ def explain_transaction(amt, product_cd, p_emaildomain, r_emaildomain, device_ty
     limit = drivers_df['shap_value'].abs().max() * 1.15
     x_lim = [-limit, limit]
 
-    return risk_label, gr.BarPlot(value=drivers_df, x_lim=x_lim)
+    return risk_label, gr.BarPlot(value=drivers_df, x_lim=x_lim), narrative
 
 
 if __name__ == "__main__":
@@ -236,6 +239,9 @@ if __name__ == "__main__":
                         label="Top Drivers for This Transaction",
                     )
 
+                gr.Markdown("### Compliance Explanation")
+                narrative_output = gr.Markdown()
+
                 explain_button.click(
                     fn=explain_transaction,
                     inputs=[
@@ -243,7 +249,7 @@ if __name__ == "__main__":
                         r_email_input, device_type_input, device_info_input,
                         card4_input, card6_input,
                     ],
-                    outputs=[risk_output, drivers_output],
+                    outputs=[risk_output, drivers_output, narrative_output],
                 )
 
     # Launch the web interface
