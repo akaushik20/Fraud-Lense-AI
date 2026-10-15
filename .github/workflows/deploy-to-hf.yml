@@ -60,5 +60,3 @@ jobs:
               factory_reboot=True,
           )
           EOF
-          )
-          EOF
