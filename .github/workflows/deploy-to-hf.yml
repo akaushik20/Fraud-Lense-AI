@@ -1,0 +1,53 @@
+name: Deploy to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build clean Space snapshot
+        run: |
+          mkdir /tmp/space
+          rsync -av \
+            --exclude 'myenv' \
+            --exclude '.venv' \
+            --exclude 'data' \
+            --exclude 'notes' \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '__pycache__' \
+            ./ /tmp/space/
+
+          cat > /tmp/space/README.md <<'EOF'
+          ---
+          title: Fraud Lense AI
+          emoji: 🕵️
+          colorFrom: blue
+          colorTo: purple
+          sdk: gradio
+          sdk_version: "6.19.0"
+          app_file: app.py
+          pinned: false
+          ---
+          EOF
+          cat README.md >> /tmp/space/README.md
+
+      - name: Push snapshot to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        working-directory: /tmp/space
+        run: |
+          git init
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git checkout -b main
+          git add -A
+          git commit -m "Deploy ${{ github.sha }}"
+          git remote add space https://SQLQueen:${HF_TOKEN}@huggingface.co/spaces/SQLQueen/fraud-lense-ai
+          git push --force space main
