@@ -53,14 +53,3 @@ jobs:
               repo_type="space",
           )
           EOF
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        working-directory: /tmp/space
-        run: |
-          git init
-          git config user.email "actions@github.com"
-          git config user.name "github-actions"
-          git checkout -b main
-          git add -A
-          git commit -m "Deploy ${{ github.sha }}"
-          git remote add space https://SQLQueen:${HF_TOKEN}@huggingface.co/spaces/SQLQueen/fraud-lense-ai
-          git push --force space main
