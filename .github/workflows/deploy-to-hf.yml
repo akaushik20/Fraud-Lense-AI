@@ -38,8 +38,21 @@ jobs:
           EOF
           cat README.md >> /tmp/space/README.md
 
-      - name: Push snapshot to Hugging Face Space
+      - name: Upload snapshot to Hugging Face Space
         env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install -q -U huggingface_hub
+          python - <<'EOF'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_folder(
+              folder_path="/tmp/space",
+              repo_id="SQLQueen/fraud-lense-ai",
+              repo_type="space",
+          )
+          EOF
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         working-directory: /tmp/space
         run: |
