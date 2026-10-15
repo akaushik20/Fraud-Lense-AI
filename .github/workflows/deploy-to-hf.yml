@@ -48,9 +48,17 @@ jobs:
           import os
           from huggingface_hub import HfApi
 
-          HfApi(token=os.environ["HF_TOKEN"]).upload_folder(
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          api.upload_folder(
               folder_path="/tmp/space",
               repo_id="SQLQueen/fraud-lense-ai",
               repo_type="space",
+          )
+          # python_version only takes effect on a full rebuild, not an incremental one
+          api.restart_space(
+              repo_id="SQLQueen/fraud-lense-ai",
+              factory_reboot=True,
+          )
+          EOF
           )
           EOF
