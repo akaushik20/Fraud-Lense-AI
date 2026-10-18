@@ -1,5 +1,4 @@
 import os
-import json
 import pickle
 import yaml
 import pandas as pd
@@ -32,15 +31,22 @@ def load_model_artifacts(model_dir='outputs/models'):
 
 def fix_xgboost_base_score(model):
     """
-    xgboost>=3.0 stores base_score as "[0.5]" instead of "0.5", which breaks
-    shap<0.51 (shap/shap#4288). Normalize it in place before SHAP reads it.
+    shap<0.51 parses base_score via float() on shap's own module-level name, but
+    xgboost>=3.0's save_raw("ubj") dump always wraps it as "[0.5]" (shap/shap#4288).
+    Patch shap's float lookup once so bracket-wrapped values parse correctly.
     """
-    booster = model.get_booster()
-    config = json.loads(booster.save_config())
-    base_score = config['learner']['learner_model_param']['base_score']
-    if base_score.startswith('['):
-        config['learner']['learner_model_param']['base_score'] = base_score.strip('[]')
-        booster.load_config(json.dumps(config))
+    from shap.explainers import _tree as shap_tree
+    if getattr(shap_tree, '_base_score_bracket_patch', False):
+        return
+
+    def _tolerant_float(value):
+        if isinstance(value, str):
+            value = value.strip('[]')
+        return float(value)
+
+    shap_tree.float = _tolerant_float
+    shap_tree._base_score_bracket_patch = True
+
 
 
 def create_shap_explainer(model, X_background):
