@@ -1,4 +1,5 @@
 import os
+import json
 import pickle
 import yaml
 import pandas as pd
@@ -29,6 +30,19 @@ def load_model_artifacts(model_dir='outputs/models'):
     return model, encoders, all_features, categorical_features
 
 
+def fix_xgboost_base_score(model):
+    """
+    xgboost>=3.0 stores base_score as "[0.5]" instead of "0.5", which breaks
+    shap<0.51 (shap/shap#4288). Normalize it in place before SHAP reads it.
+    """
+    booster = model.get_booster()
+    config = json.loads(booster.save_config())
+    base_score = config['learner']['learner_model_param']['base_score']
+    if base_score.startswith('['):
+        config['learner']['learner_model_param']['base_score'] = base_score.strip('[]')
+        booster.load_config(json.dumps(config))
+
+
 def create_shap_explainer(model, X_background):
     """
     Initialize SHAP TreeExplainer with background data
@@ -40,9 +54,11 @@ def create_shap_explainer(model, X_background):
     Returns:
         explainer: SHAP TreeExplainer object
     """
+    fix_xgboost_base_score(model)
     # Use tree_path_dependent for XGBoost compatibility (handles categorical splits)
     explainer = shap.TreeExplainer(model, X_background, feature_perturbation='tree_path_dependent')
     return explainer
+
 
 
 def get_prediction_explanation(model, explainer, encoders, transaction_df, features, categorical_features=None):
