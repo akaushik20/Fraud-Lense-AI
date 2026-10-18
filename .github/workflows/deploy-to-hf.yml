@@ -50,12 +50,12 @@ jobs:
           api = HfApi(token=os.environ["HF_TOKEN"])
           api.upload_folder(
               folder_path="/tmp/space",
-              repo_id="SQLQueen/fraud-lense-ai",
+              repo_id="SQLQueen/FraudLense_v2",
               repo_type="space",
           )
           # python_version only takes effect on a full rebuild, not an incremental one
           api.restart_space(
-              repo_id="SQLQueen/fraud-lense-ai",
+              repo_id="SQLQueen/FraudLense_v2",
               factory_reboot=True,
           )
           EOF
