@@ -13,3 +13,5 @@ pip-tools
 setuptools<70
 ydata-profiling
 pyyaml
+# capped to satisfy gradio's mcp extra, which HF Spaces force-installs (gradio[oauth,mcp])
+pydantic<=2.12.5,>=2.11.10

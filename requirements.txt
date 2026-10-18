@@ -222,13 +222,14 @@ pip-tools==7.6.2
     # via -r requirements.in
 puremagic==1.30
     # via visions
-pydantic==2.14.1
+pydantic==2.12.5
     # via
+    #   -r requirements.in
     #   fastapi
     #   gradio
     #   openai
     #   ydata-profiling
-pydantic-core==2.50.1
+pydantic-core==2.41.5
     # via pydantic
 pydub==0.25.1
     # via gradio
