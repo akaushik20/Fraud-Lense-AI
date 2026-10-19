@@ -49,20 +49,20 @@ def fix_xgboost_base_score(model):
 
 
 
-def create_shap_explainer(model, X_background):
+def create_shap_explainer(model):
     """
-    Initialize SHAP TreeExplainer with background data
-    
+    Initialize SHAP TreeExplainer
+
     Args:
         model: Trained XGBoost model
-        X_background: Sample of training data (e.g., 100 rows)
-    
+
     Returns:
         explainer: SHAP TreeExplainer object
     """
     fix_xgboost_base_score(model)
-    # Use tree_path_dependent for XGBoost compatibility (handles categorical splits)
-    explainer = shap.TreeExplainer(model, X_background, feature_perturbation='tree_path_dependent')
+    # tree_path_dependent reads leaf coverage from the trees themselves, so no
+    # background dataset is passed (a sampled background can't cover every leaf)
+    explainer = shap.TreeExplainer(model, feature_perturbation='tree_path_dependent')
     return explainer
 
 
@@ -184,14 +184,14 @@ class FraudExplainer:
         self.model, self.encoders, self.features, self.categorical_features = load_model_artifacts(model_dir)
         print(f"Model loaded with {len(self.features)} features")
         
-        # Load SHAP background data
+        # Load SHAP background data (kept for reference/debugging, not used by the explainer)
         background_path = os.path.join(model_dir, 'shap_background.pkl')
         with open(background_path, 'rb') as f:
             self.background_data = pickle.load(f)
         print(f"SHAP background loaded ({len(self.background_data)} samples)")
         
         # Create SHAP explainer
-        self.explainer = create_shap_explainer(self.model, self.background_data)
+        self.explainer = create_shap_explainer(self.model)
         print("SHAP explainer ready\n")
     
     def explain(self, transaction_dict):
