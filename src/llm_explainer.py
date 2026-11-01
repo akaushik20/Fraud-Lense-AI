@@ -23,14 +23,14 @@ compliance reviewer. Rules:
 
 EXPLANATION_PROMPT = """Model risk score: {risk_score} ({tier} risk)
 
-Signals the model weighed, strongest first:
+Signals the model weighed:
 {drivers}
 
 RECOMMENDED ACTION: {action}
 
 Write the note in this order:
 1. State the score and the risk tier.
-2. Describe each signal with its value and whether it raised or lowered the risk.
+2. Describe the factors that raised the score, then the factors that lowered it, naming each value and its strength. If a group is "none", say no factors pushed in that direction.
 3. Add one sentence that inputs not collected in this demo were set to typical training-data values.
 4. End with the recommended action, worded as given."""
 
@@ -38,12 +38,11 @@ Write the note in this order:
 # HIGH_RISK_THRESHOLD matches the 0.5 "Likely Fraud" cut-off in app.py/explainer.py
 HIGH_RISK_THRESHOLD = 0.5
 MODERATE_RISK_THRESHOLD = 0.2
-MAX_SIGNALS = 5
 
 ACTION_BY_TIER = {
-    "low": "No action required; approve the transaction.",
-    "moderate": "Approve the transaction and keep it under routine monitoring.",
-    "high": "Hold the transaction and refer it for manual review.",
+    "LOW": "This score alone does not indicate a need for additional review.",
+    "MEDIUM": "Secondary review is suggested.",
+    "HIGH": "Manual review is recommended before the transaction is approved.",
 }
 
 STRONG_SHAP = 0.5
@@ -52,19 +51,19 @@ MODERATE_SHAP = 0.2
 
 def risk_tier(risk_score: float) -> str:
     if risk_score >= HIGH_RISK_THRESHOLD:
-        return "high"
+        return "HIGH"
     if risk_score >= MODERATE_RISK_THRESHOLD:
-        return "moderate"
-    return "low"
+        return "MEDIUM"
+    return "LOW"
 
 
 def signal_strength(shap_value: float) -> str:
     magnitude = abs(shap_value)
     if magnitude >= STRONG_SHAP:
-        return "strongly"
+        return "strong"
     if magnitude >= MODERATE_SHAP:
-        return "moderately"
-    return "slightly"
+        return "moderate"
+    return "slight"
 
 
 def format_value(feature: str, value) -> str:
@@ -74,16 +73,27 @@ def format_value(feature: str, value) -> str:
 
 
 def build_facts(shap_drivers: list, transaction: dict) -> str:
-    """Render the top drivers as '- <name> = <value>: <strength> raised/lowered the risk score'."""
-    lines = []
-    for driver in shap_drivers[:MAX_SIGNALS]:
-        feature = driver["feature"]
-        name = FEATURE_DISPLAY_NAMES.get(feature, feature).lower()
-        value = format_value(feature, transaction.get(feature, "unknown"))
-        effect = "raised" if driver["shap_value"] > 0 else "lowered"
-        strength = signal_strength(driver["shap_value"])
-        lines.append(f"- {name} = {value}: {strength} {effect} the risk score")
-    return "\n".join(lines)
+    """Render all drivers in two groups: factors that raised and factors that lowered the score."""
+    raised = [d for d in shap_drivers if d["shap_value"] > 0]
+    lowered = [d for d in shap_drivers if d["shap_value"] <= 0]
+    return (
+        f"Factors that raised the risk score:\n{format_group(raised, transaction)}\n\n"
+        f"Factors that lowered the risk score:\n{format_group(lowered, transaction)}"
+    )
+
+
+def format_group(drivers: list, transaction: dict) -> str:
+    if not drivers:
+        return "none"
+    return "\n".join(format_driver_line(d, transaction) for d in drivers)
+
+
+def format_driver_line(driver: dict, transaction: dict) -> str:
+    feature = driver["feature"]
+    name = FEATURE_DISPLAY_NAMES.get(feature, feature).lower()
+    value = format_value(feature, transaction.get(feature, "unknown"))
+    strength = signal_strength(driver["shap_value"])
+    return f"- {name} = {value} ({strength})"
 
 
 def build_messages(shap_drivers: list, risk_score: float, transaction: dict) -> list:
