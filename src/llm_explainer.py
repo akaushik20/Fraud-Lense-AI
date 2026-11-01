@@ -1,6 +1,8 @@
 import os
 from huggingface_hub import InferenceClient
 
+from src.helper import FEATURE_DISPLAY_NAMES
+
 # ── Model config ──────────────────────────────────────────────────
 # Phase 1: Mistral 7B via HF Inference API
 # Phase 2: swap MODEL_ID to your fine-tuned adapter on HF Hub
@@ -12,24 +14,90 @@ client = InferenceClient(
 )
 
 # ── Prompt ────────────────────────────────────────────────────────
-EXPLANATION_PROMPT = """You are a financial compliance officer writing
-a regulatory explanation for a flagged transaction.
+SYSTEM_PROMPT = """You are a fraud-operations analyst writing a case note for a \
+compliance reviewer. Rules:
+- Use ONLY the facts provided. Never invent numbers, thresholds, history, or causes.
+- Describe model signals, not customer intent. Do not accuse anyone of fraud.
+- Do not recommend any action other than the one given under RECOMMENDED ACTION.
+- Write one plain paragraph of 5-6 sentences, no bullets, suitable for a compliance report."""
 
-Write exactly 3-4 sentences in plain English. Rules:
-- Be factual and specific to the factors listed below
-- Do not accuse the customer of fraud
-- Do not reference any factor not listed below
-- Use clear language suitable for a compliance report
+EXPLANATION_PROMPT = """Model risk score: {risk_score} ({tier} risk)
 
-Transaction details:
-- Risk score: {risk_score}
-- Transaction amount: ${amount}
-- Product type: {product}
-
-Key risk factors identified:
+Signals the model weighed, strongest first:
 {drivers}
 
-Explanation:"""
+RECOMMENDED ACTION: {action}
+
+Write the note in this order:
+1. State the score and the risk tier.
+2. Describe each signal with its value and whether it raised or lowered the risk.
+3. Add one sentence that inputs not collected in this demo were set to typical training-data values.
+4. End with the recommended action, worded as given."""
+
+# ── Decision logic (code decides; the LLM only narrates) ──────────
+# HIGH_RISK_THRESHOLD matches the 0.5 "Likely Fraud" cut-off in app.py/explainer.py
+HIGH_RISK_THRESHOLD = 0.5
+MODERATE_RISK_THRESHOLD = 0.2
+MAX_SIGNALS = 5
+
+ACTION_BY_TIER = {
+    "low": "No action required; approve the transaction.",
+    "moderate": "Approve the transaction and keep it under routine monitoring.",
+    "high": "Hold the transaction and refer it for manual review.",
+}
+
+STRONG_SHAP = 0.5
+MODERATE_SHAP = 0.2
+
+
+def risk_tier(risk_score: float) -> str:
+    if risk_score >= HIGH_RISK_THRESHOLD:
+        return "high"
+    if risk_score >= MODERATE_RISK_THRESHOLD:
+        return "moderate"
+    return "low"
+
+
+def signal_strength(shap_value: float) -> str:
+    magnitude = abs(shap_value)
+    if magnitude >= STRONG_SHAP:
+        return "strongly"
+    if magnitude >= MODERATE_SHAP:
+        return "moderately"
+    return "slightly"
+
+
+def format_value(feature: str, value) -> str:
+    if feature == "TransactionAmt" and isinstance(value, (int, float)):
+        return f"${value:,.2f}"
+    return str(value)
+
+
+def build_facts(shap_drivers: list, transaction: dict) -> str:
+    """Render the top drivers as '- <name> = <value>: <strength> raised/lowered the risk score'."""
+    lines = []
+    for driver in shap_drivers[:MAX_SIGNALS]:
+        feature = driver["feature"]
+        name = FEATURE_DISPLAY_NAMES.get(feature, feature).lower()
+        value = format_value(feature, transaction.get(feature, "unknown"))
+        effect = "raised" if driver["shap_value"] > 0 else "lowered"
+        strength = signal_strength(driver["shap_value"])
+        lines.append(f"- {name} = {value}: {strength} {effect} the risk score")
+    return "\n".join(lines)
+
+
+def build_messages(shap_drivers: list, risk_score: float, transaction: dict) -> list:
+    tier = risk_tier(risk_score)
+    user_prompt = EXPLANATION_PROMPT.format(
+        risk_score=f"{risk_score:.1%}",
+        tier=tier,
+        drivers=build_facts(shap_drivers, transaction),
+        action=ACTION_BY_TIER[tier],
+    )
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt},
+    ]
 
 def generate_explanation(shap_drivers: list,
                          risk_score: float,
@@ -44,37 +112,32 @@ def generate_explanation(shap_drivers: list,
         transaction:  dict of raw user inputs from the Gradio form
 
     Returns:
-        str: 3-4 sentence ECOA-compliant explanation
+        str: 5-6 sentence case note for a compliance reviewer
     """
-    # Format the drivers into readable lines
-    drivers_text = "\n".join([
-        f"- {d['feature']}: {d['direction']} "
-        f"(impact score: {d['shap_value']:.3f})"
-        for d in shap_drivers
-    ])
-
-    prompt = EXPLANATION_PROMPT.format(
-        risk_score=f"{risk_score:.1%}",
-        amount=transaction.get("TransactionAmt", "unknown"),
-        product=transaction.get("ProductCD", "unknown"),
-        drivers=drivers_text
-    )
+    messages = build_messages(shap_drivers, risk_score, transaction)
 
     try:
-        response = client.text_generation(
-            prompt,
-            max_new_tokens=200,
+        response = client.chat_completion(
+            messages=messages,
+            max_tokens=300,
             temperature=0.1,
-            do_sample=False,
         )
-        return response.strip()
+        return response.choices[0].message.content.strip()
 
     except Exception as e:
         # Graceful fallback — app still works if LLM call fails; log detail, don't expose it in the UI
-        print(f"LLM explanation failed: {e}")
-        return (
-            f"This transaction received a risk score of {risk_score:.1%}. "
-            f"The primary contributing factors were: "
-            f"{', '.join([d['feature'] for d in shap_drivers[:3]])}. "
-            f"Manual review is recommended."
-        )
+        print(f"LLM explanation failed: {e!r}")
+        return build_fallback_explanation(shap_drivers, risk_score)
+
+
+def build_fallback_explanation(shap_drivers: list, risk_score: float) -> str:
+    top_names = [
+        FEATURE_DISPLAY_NAMES.get(d["feature"], d["feature"]).lower()
+        for d in shap_drivers[:3]
+    ]
+    return (
+        f"This transaction received a risk score of {risk_score:.1%} "
+        f"({risk_tier(risk_score)} risk). "
+        f"The strongest signals were: {', '.join(top_names)}. "
+        f"{ACTION_BY_TIER[risk_tier(risk_score)]}"
+    )
