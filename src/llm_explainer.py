@@ -5,9 +5,10 @@ from huggingface_hub import InferenceClient
 from src.helper import FEATURE_DISPLAY_NAMES
 
 # ── Model config ──────────────────────────────────────────────────
-# Phase 1: Mistral 7B via HF Inference API
+# Phase 1: Llama 3.1 8B Instruct via HF Inference API (Mistral-7B-Instruct-v0.3
+# is no longer served as a chat model by any live provider)
 # Phase 2: swap MODEL_ID to your fine-tuned adapter on HF Hub
-MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.3"
+MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
 
 client = InferenceClient(
     model=MODEL_ID,

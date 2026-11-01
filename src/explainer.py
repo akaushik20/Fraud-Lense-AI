@@ -36,6 +36,8 @@ def fix_xgboost_base_score(model):
     Patch shap's float lookup once so bracket-wrapped values parse correctly.
     """
     from shap.explainers import _tree as shap_tree
+    if tuple(int(p) for p in shap.__version__.split('.')[:2]) >= (0, 51):
+        return  # newer shap parses the bracketed value itself; patching float breaks its dtype=float usage
     if getattr(shap_tree, '_base_score_bracket_patch', False):
         return
 
