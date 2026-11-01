@@ -75,11 +75,25 @@ python src/eda_ydata.py    # full ydata-profiling HTML report (~6 min)
 - `outputs/feature_selection/feature_importance_scores.csv` - XGBoost rankings
 - `outputs/feature_selection/feature_selection_report.txt` - Detailed analysis
 
+## Deployment (Hugging Face Spaces)
+Pushing to `main` runs [.github/workflows/deploy-to-hf.yml](.github/workflows/deploy-to-hf.yml), which uploads a clean snapshot (no `data/`, venvs or `.github`) to the Space `SQLQueen/FraudLense_v2` and factory-reboots it. It can also be run manually via `workflow_dispatch`.
+
+Two tokens are needed, both named `HF_TOKEN`:
+
+| Where | Secret | Required permission |
+|---|---|---|
+| GitHub repo → Settings → Secrets → Actions | `HF_TOKEN` | Write access to the Space (used to upload) |
+| Space → Settings → Variables and secrets | `HF_TOKEN` | Make calls to Inference Providers (used by the LLM explanation) |
+
+If the Space shows the short fallback note instead of a full explanation, check the Space **Logs** for `LLM explanation failed:`. A `403` means the Space token lacks the Inference Providers permission. Restart the Space after changing a secret.
+
+The explanation LLM is set by `MODEL_ID` in [src/llm_explainer.py](src/llm_explainer.py).
+
 ## Next Steps
 - [ ] Add fraud prediction functionality to Gradio app
 - [ ] Implement SHAP explanations for predictions
 - [ ] Add transaction input form
-- [ ] Deploy to Hugging Face Spaces
+- [x] Deploy to Hugging Face Spaces
 
 ## Environment
 - Python 3.13.4
