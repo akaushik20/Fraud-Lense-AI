@@ -204,13 +204,11 @@ def generate_explanation(shap_drivers: list,
 
 
 def build_fallback_explanation(shap_drivers: list, risk_score: float) -> str:
-    top_names = [
-        FEATURE_DISPLAY_NAMES.get(d["feature"], d["feature"]).lower()
-        for d in shap_drivers[:3]
-    ]
-    return (
-        f"This transaction received a risk score of {risk_score:.1%} "
-        f"({risk_tier(risk_score)} risk). "
-        f"The strongest signals were: {', '.join(top_names)}. "
-        f"{ACTION_BY_TIER[risk_tier(risk_score)]}"
+    tier = risk_tier(risk_score)
+    raised = ", ".join(display_name(d["feature"]) for d in raised_drivers(shap_drivers)) or "none"
+    note = (
+        f"This transaction received a risk score of {risk_score:.1%} ({tier} risk). "
+        f"Factors that increased the risk score: {raised}. "
+        f"{ACTION_BY_TIER[tier]}"
     )
+    return bold_key_drivers(note, select_key_drivers(shap_drivers, tier))
