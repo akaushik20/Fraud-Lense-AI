@@ -36,8 +36,8 @@ Write the note in this order:
 
 # ── Decision logic (code decides; the LLM only narrates) ──────────
 # HIGH_RISK_THRESHOLD matches the 0.5 "Likely Fraud" cut-off in app.py/explainer.py
-HIGH_RISK_THRESHOLD = 0.5
-MODERATE_RISK_THRESHOLD = 0.2
+HIGH_RISK_THRESHOLD = 0.1
+MODERATE_RISK_THRESHOLD = 0.03
 
 ACTION_BY_TIER = {
     "LOW": "This score alone does not indicate a need for additional review.",
